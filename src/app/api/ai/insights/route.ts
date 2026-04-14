@@ -71,7 +71,7 @@ function analyzeTraining(sessions: {
   }
 
   // Consecutive training days without rest
-  const sortedDays = [...new Set(sessions.map((s) => dayKey(s.date)))].sort();
+  const sortedDays = Array.from(new Set(sessions.map((s) => dayKey(s.date)))).sort();
   let maxStreak = 1, currentStreak = 1;
   for (let i = 1; i < sortedDays.length; i++) {
     const prev = new Date(sortedDays[i - 1]);
