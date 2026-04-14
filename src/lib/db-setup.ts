@@ -70,8 +70,10 @@ export async function setupDatabase(): Promise<void> {
     `CREATE TABLE IF NOT EXISTS "TrainingSession" (
       "id"              TEXT NOT NULL,
       "userId"          TEXT NOT NULL,
+      "stravaId"        TEXT UNIQUE,
       "date"            TIMESTAMP(3) NOT NULL,
       "type"            TEXT NOT NULL,
+      "name"            TEXT,
       "distance"        DOUBLE PRECISION,
       "duration"        INTEGER NOT NULL,
       "pace"            DOUBLE PRECISION,
@@ -86,6 +88,9 @@ export async function setupDatabase(): Promise<void> {
       CONSTRAINT "TrainingSession_userId_fkey" FOREIGN KEY ("userId")
         REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
     )`,
+    // Add new columns to existing tables
+    `ALTER TABLE "TrainingSession" ADD COLUMN IF NOT EXISTS "stravaId" TEXT UNIQUE`,
+    `ALTER TABLE "TrainingSession" ADD COLUMN IF NOT EXISTS "name" TEXT`,
 
     // ── DietEntry ────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS "DietEntry" (

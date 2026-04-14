@@ -10,6 +10,8 @@ import {
   Target,
   Plus,
   Moon,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import { SkeletonStatCard, SkeletonCard, SkeletonChart } from "@/components/ui/LoadingSkeleton";
@@ -79,6 +81,8 @@ export default function DashboardPage() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -132,21 +136,57 @@ export default function DashboardPage() {
 
   const firstName = userName?.split(" ")[0] ?? "Athlete";
 
+  async function syncStrava() {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/strava/sync?pages=5");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Sync failed");
+      setSyncMsg(`${data.imported} activities synced from Strava`);
+      // Reload data
+      const sessionsRes = await fetch("/api/training?limit=5");
+      if (sessionsRes.ok) {
+        const sData = await sessionsRes.json();
+        setRecentSessions(sData.data ?? sData ?? []);
+      }
+    } catch (err) {
+      setSyncMsg(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <div className="p-5 md:p-8 max-w-6xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-slate-900">
-          {getGreeting()}, {firstName}
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-slate-900">
+            {getGreeting()}, {firstName}
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
           })}
         </p>
+      </div>
+
+        {/* Strava sync button */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <button
+            onClick={syncStrava}
+            disabled={syncing}
+            className="flex items-center gap-2 rounded-lg bg-[#FC4C02] px-3 py-2 text-xs font-semibold text-white hover:bg-[#e04402] transition-colors disabled:opacity-60"
+          >
+            {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            {syncing ? "Syncing…" : "Sync Strava"}
+          </button>
+          {syncMsg && <p className="text-xs text-slate-500">{syncMsg}</p>}
+        </div>
       </div>
 
       {error && (

@@ -66,8 +66,10 @@ model User {
 model TrainingSession {
   id              String   @id @default(cuid())
   userId          String
+  stravaId        String?  @unique // Strava activity ID for deduplication
   date            DateTime
   type            String   // run | bike | swim | strength | yoga | other
+  name            String?  // activity name from Strava
   distance        Float?   // kilometers
   duration        Int      // minutes
   pace            Float?   // min/km
