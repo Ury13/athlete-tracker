@@ -1,10 +1,29 @@
 import NextAuth from "next-auth";
 import Strava from "next-auth/providers/strava";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { Adapter, AdapterAccount } from "next-auth/adapters";
 import { prisma } from "@/lib/prisma";
 
+// Strava returns providerAccountId as an integer — Prisma expects a string.
+// This wrapper coerces it before any DB calls.
+function stravaCompatibleAdapter(base: Adapter): Adapter {
+  return {
+    ...base,
+    getUserByAccount: (account) =>
+      base.getUserByAccount!({
+        ...account,
+        providerAccountId: String(account.providerAccountId),
+      }),
+    linkAccount: (account: AdapterAccount) =>
+      base.linkAccount!({
+        ...account,
+        providerAccountId: String(account.providerAccountId),
+      }),
+  };
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: stravaCompatibleAdapter(PrismaAdapter(prisma) as Adapter),
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
