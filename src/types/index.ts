@@ -63,6 +63,15 @@ export interface BodyMetric {
   hrv: number | null;
   vo2max: number | null;
   notes: string | null;
+  // Garmin-specific fields
+  bodyBattery?: number | null;
+  bodyBatteryLow?: number | null;
+  stressAvg?: number | null;
+  steps?: number | null;
+  deepSleepMin?: number | null;
+  remSleepMin?: number | null;
+  sleepScore?: number | null;
+  trainingReadiness?: number | null;
   createdAt: Date;
 }
 

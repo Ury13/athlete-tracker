@@ -4,126 +4,99 @@ import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import {
   Activity,
+  Battery,
+  BrainCircuit,
   CheckCircle,
-  ClipboardCopy,
-  Heart,
-  KeyRound,
+  ChevronDown,
+  ChevronUp,
+  Dumbbell,
+  Moon,
   RefreshCw,
   Settings,
-  TriangleAlert,
   User,
 } from "lucide-react";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function maskKey(key: string): string {
-  return key.slice(0, 8) + "...";
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 // ── Settings Page ─────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const { data: session } = useSession();
 
-  // API Key state
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [keyLoading, setKeyLoading] = useState(true);
-  const [keyError, setKeyError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [showRegenWarning, setShowRegenWarning] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  // ── Garmin state ────────────────────────────────────────────────────────────
+  const [garminConnected, setGarminConnected] = useState(false);
+  const [garminLastSync, setGarminLastSync] = useState<string | null>(null);
+  const [garminStatusLoading, setGarminStatusLoading] = useState(true);
+  const [garminSyncStatus, setGarminSyncStatus] = useState<
+    "idle" | "loading" | "ok" | "error"
+  >("idle");
+  const [garminSyncMessage, setGarminSyncMessage] = useState("");
+  const [garminDisconnecting, setGarminDisconnecting] = useState(false);
+  const [showDevSetup, setShowDevSetup] = useState(false);
 
-  // Test import state
-  const [testStatus, setTestStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
-  const [testMessage, setTestMessage] = useState<string>("");
+  // ── Strava state ────────────────────────────────────────────────────────────
+  const [syncStatus, setSyncStatus] = useState<
+    "idle" | "loading" | "ok" | "error"
+  >("idle");
+  const [syncMessage, setSyncMessage] = useState("");
 
-  // Strava sync state
-  const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
-  const [syncMessage, setSyncMessage] = useState<string>("");
-
-  // ── Fetch API Key ───────────────────────────────────────────────────────────
+  // ── Fetch Garmin status on mount ────────────────────────────────────────────
 
   useEffect(() => {
-    async function fetchKey() {
-      setKeyLoading(true);
-      setKeyError(null);
+    async function fetchGarminStatus() {
+      setGarminStatusLoading(true);
       try {
-        const res = await fetch("/api/settings/apikey");
-        if (!res.ok) throw new Error("Failed to fetch API key");
-        const data = await res.json();
-        setApiKey(data.apiKey ?? null);
-      } catch (err) {
-        setKeyError(err instanceof Error ? err.message : "Error loading key");
+        const res = await fetch("/api/garmin/status");
+        if (res.ok) {
+          const data = await res.json();
+          setGarminConnected(data.connected ?? false);
+          setGarminLastSync(data.lastSync ?? null);
+        }
+      } catch {
+        // ignore — defaults to not connected
       } finally {
-        setKeyLoading(false);
+        setGarminStatusLoading(false);
       }
     }
-    fetchKey();
+    fetchGarminStatus();
   }, []);
 
-  // ── Generate / Regenerate API Key ───────────────────────────────────────────
+  // ── Garmin Sync ─────────────────────────────────────────────────────────────
 
-  async function generateKey() {
-    setGenerating(true);
-    setKeyError(null);
-    setShowRegenWarning(false);
+  async function garminSync() {
+    setGarminSyncStatus("loading");
+    setGarminSyncMessage("");
     try {
-      const res = await fetch("/api/settings/apikey", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to generate API key");
+      const res = await fetch("/api/garmin/sync");
       const data = await res.json();
-      setApiKey(data.apiKey);
-    } catch (err) {
-      setKeyError(err instanceof Error ? err.message : "Error generating key");
-    } finally {
-      setGenerating(false);
+      if (res.ok) {
+        setGarminSyncStatus("ok");
+        setGarminSyncMessage(data.message ?? "Sync complete");
+        setGarminLastSync(new Date().toISOString());
+      } else {
+        setGarminSyncStatus("error");
+        setGarminSyncMessage(data.error ?? "Sync failed");
+      }
+    } catch {
+      setGarminSyncStatus("error");
+      setGarminSyncMessage("Network error");
     }
   }
 
-  // ── Copy to Clipboard ───────────────────────────────────────────────────────
+  // ── Garmin Disconnect ───────────────────────────────────────────────────────
 
-  async function copyKey() {
-    if (!apiKey) return;
-    await navigator.clipboard.writeText(apiKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  // ── Test Import ─────────────────────────────────────────────────────────────
-
-  async function testImport() {
-    if (!apiKey) return;
-    setTestStatus("loading");
-    setTestMessage("");
+  async function garminDisconnect() {
+    setGarminDisconnecting(true);
     try {
-      const res = await fetch("/api/health/import", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          date: today(),
-          weight: 70.5,
-          restingHR: 58,
-          sleepHours: 7.5,
-          hrv: 42,
-        }),
-      });
-      const data = await res.json();
+      const res = await fetch("/api/garmin/disconnect", { method: "POST" });
       if (res.ok) {
-        setTestStatus("ok");
-        setTestMessage("Test import succeeded! Check your Metrics page.");
-      } else {
-        setTestStatus("error");
-        setTestMessage(data.error ?? "Import failed");
+        setGarminConnected(false);
+        setGarminLastSync(null);
+        setGarminSyncStatus("idle");
+        setGarminSyncMessage("");
       }
     } catch {
-      setTestStatus("error");
-      setTestMessage("Network error");
+      // ignore
+    } finally {
+      setGarminDisconnecting(false);
     }
   }
 
@@ -163,212 +136,167 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ── Apple Health ─────────────────────────────────────────────────────── */}
+      {/* ── Garmin Connect ───────────────────────────────────────────────────── */}
       <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
-            <Heart className="w-5 h-5 text-red-500" />
-          </div>
-          <div>
-            <h2 className="text-slate-800 font-semibold text-base">Apple Health</h2>
-            <p className="text-slate-500 text-sm">
-              Connect your iPhone&apos;s Health app using the iOS Shortcut below.
-              Data syncs automatically every day.
-            </p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+              <Activity className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <h2 className="text-slate-800 font-semibold text-base">
+                Garmin Connect
+              </h2>
+              {garminStatusLoading ? (
+                <div className="h-4 w-24 rounded bg-slate-100 animate-pulse mt-1" />
+              ) : garminConnected ? (
+                <p className="text-green-600 text-sm flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Connected
+                </p>
+              ) : (
+                <p className="text-slate-500 text-sm">Not connected</p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* API Key display */}
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-slate-700">API Key</p>
+        {garminStatusLoading ? null : garminConnected ? (
+          /* ── Connected state ── */
+          <div className="space-y-4">
+            {garminLastSync && (
+              <p className="text-sm text-slate-500">
+                Last sync:{" "}
+                {new Date(garminLastSync).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            )}
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={garminSync}
+                disabled={garminSyncStatus === "loading"}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${garminSyncStatus === "loading" ? "animate-spin" : ""}`}
+                />
+                {garminSyncStatus === "loading" ? "Syncing..." : "Sync Now"}
+              </button>
+              <button
+                onClick={garminDisconnect}
+                disabled={garminDisconnecting}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                {garminDisconnecting ? "Disconnecting..." : "Disconnect"}
+              </button>
+            </div>
+            {garminSyncStatus === "ok" && (
+              <p className="text-sm text-green-600 flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                {garminSyncMessage}
+              </p>
+            )}
+            {garminSyncStatus === "error" && (
+              <p className="text-sm text-red-600">{garminSyncMessage}</p>
+            )}
+          </div>
+        ) : (
+          /* ── Not connected state ── */
+          <div className="space-y-5">
+            <p className="text-slate-600 text-sm">
+              Sync your Fenix 8 data — Body Battery, sleep, stress, HRV,
+              training readiness, and steps.
+            </p>
 
-          {keyLoading ? (
-            <div className="h-10 rounded-lg bg-slate-100 animate-pulse w-64" />
-          ) : keyError ? (
-            <p className="text-sm text-red-600">{keyError}</p>
-          ) : apiKey ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <code className="bg-slate-100 text-slate-800 text-sm rounded-lg px-3 py-2 font-mono">
-                  {maskKey(apiKey)}
-                </code>
-                <button
-                  onClick={copyKey}
-                  className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors text-slate-600"
-                >
-                  {copied ? (
-                    <>
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <ClipboardCopy className="w-4 h-4" />
-                      Copy
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowRegenWarning(true)}
-                  disabled={generating}
-                  className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 ${generating ? "animate-spin" : ""}`} />
-                  Regenerate
-                </button>
-              </div>
-
-              {showRegenWarning && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                  <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">This will break your existing Shortcut until you update it.</p>
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={generateKey}
-                        disabled={generating}
-                        className="px-3 py-1 rounded bg-amber-600 text-white text-xs font-medium hover:bg-amber-700 disabled:opacity-50"
-                      >
-                        {generating ? "Regenerating..." : "Yes, regenerate"}
-                      </button>
-                      <button
-                        onClick={() => setShowRegenWarning(false)}
-                        className="px-3 py-1 rounded border border-amber-300 text-xs font-medium hover:bg-amber-100"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+            {/* What you'll get */}
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-3">
+                What you&apos;ll get
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { icon: <Battery className="w-5 h-5 text-blue-500" />, label: "Body Battery", bg: "bg-blue-50 border-blue-100" },
+                  { icon: <Moon className="w-5 h-5 text-purple-500" />, label: "Sleep Quality", bg: "bg-purple-50 border-purple-100" },
+                  { icon: <Dumbbell className="w-5 h-5 text-green-500" />, label: "Training Readiness", bg: "bg-green-50 border-green-100" },
+                  { icon: <BrainCircuit className="w-5 h-5 text-orange-500" />, label: "Stress & HRV", bg: "bg-orange-50 border-orange-100" },
+                ].map(({ icon, label, bg }) => (
+                  <div
+                    key={label}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border text-center ${bg}`}
+                  >
+                    {icon}
+                    <span className="text-xs text-slate-600 leading-tight font-medium">
+                      {label}
+                    </span>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            <a
+              href="/api/garmin/connect"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              <Activity className="w-4 h-4" />
+              Connect Garmin
+            </a>
+
+            <p className="text-xs text-slate-400">
+              Requires Garmin Health API credentials. See setup instructions
+              below.
+            </p>
+
+            {/* Collapsible Developer Setup */}
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowDevSetup((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <span>Developer Setup</span>
+                {showDevSetup ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+              {showDevSetup && (
+                <div className="px-4 pb-4 space-y-2 text-sm text-slate-600 border-t border-slate-100">
+                  <ol className="space-y-2 mt-3">
+                    <li>
+                      <span className="font-medium">1.</span> Register at{" "}
+                      <a
+                        href="https://developer.garmin.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        developer.garmin.com
+                      </a>
+                    </li>
+                    <li>
+                      <span className="font-medium">2.</span> Apply for Health
+                      API access
+                    </li>
+                    <li>
+                      <span className="font-medium">3.</span> Once approved,
+                      add to Vercel environment variables:
+                      <div className="mt-1.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono text-xs text-slate-700 space-y-1">
+                        <p>GARMIN_CLIENT_ID=your_consumer_key</p>
+                        <p>GARMIN_CLIENT_SECRET=your_consumer_secret</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span className="font-medium">4.</span> Redeploy and come
+                      back here to connect
+                    </li>
+                  </ol>
                 </div>
               )}
             </div>
-          ) : (
-            <button
-              onClick={generateKey}
-              disabled={generating}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors disabled:opacity-50"
-            >
-              <KeyRound className="w-4 h-4" />
-              {generating ? "Generating..." : "Generate API Key"}
-            </button>
-          )}
-        </div>
-
-        {/* What gets synced */}
-        <div>
-          <p className="text-sm font-medium text-slate-700 mb-3">What gets synced</p>
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { icon: "⚖️", label: "Weight" },
-              { icon: "❤️", label: "Resting Heart Rate" },
-              { icon: "😴", label: "Sleep" },
-              { icon: "📊", label: "HRV" },
-            ].map(({ icon, label }) => (
-              <div
-                key={label}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-slate-50 border border-slate-100 text-center"
-              >
-                <span className="text-xl">{icon}</span>
-                <span className="text-xs text-slate-600 leading-tight">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Setup Instructions */}
-        <div>
-          <p className="text-sm font-medium text-slate-700 mb-3">Setup Instructions</p>
-          <ol className="space-y-4 text-sm text-slate-700">
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">
-                1
-              </span>
-              <span>Tap &quot;Generate API Key&quot; above and copy it.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">
-                2
-              </span>
-              <span>
-                Open the <strong>Shortcuts</strong> app on your iPhone &rarr; tap{" "}
-                <strong>+</strong> (new shortcut).
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">
-                3
-              </span>
-              <div className="space-y-2">
-                <p>Add these actions in order:</p>
-                <div className="rounded-lg bg-slate-50 border border-slate-200 divide-y divide-slate-200 text-xs font-mono">
-                  {[
-                    "Find Health Samples → Body Measurements → Weight → Last 1 → Latest First",
-                    "Find Health Samples → Heart → Resting Heart Rate → Last 1",
-                    "Find Health Samples → Sleep → Time in Bed → Last 1",
-                    "Find Health Samples → Heart → Heart Rate Variability → Last 1",
-                  ].map((step) => (
-                    <div key={step} className="px-3 py-2 text-slate-600">
-                      {step}
-                    </div>
-                  ))}
-                  <div className="px-3 py-2 text-slate-600 space-y-1">
-                    <p>
-                      <strong>Get Contents of URL</strong> &rarr;{" "}
-                      <span className="break-all">
-                        https://athlete-tracker-xi.vercel.app/api/health/import
-                      </span>
-                    </p>
-                    <p>Method: POST</p>
-                    <p>
-                      Headers: <code>Authorization: Bearer YOUR_API_KEY</code>
-                    </p>
-                    <p>
-                      Body (JSON):{" "}
-                      <code>
-                        {
-                          '{ "date": "YYYY-MM-DD", "weight": ..., "restingHR": ..., "sleepHours": ..., "hrv": ... }'
-                        }
-                      </code>
-                    </p>
-                    <p className="text-slate-400 text-xs not-italic font-sans">
-                      Use &quot;Current Date&quot; formatted as <em>YYYY-MM-DD</em> for the date
-                      field, and map each Health sample&apos;s value to the corresponding key.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">
-                4
-              </span>
-              <span>
-                Add an <strong>Automation</strong> &rarr; Personal Automation &rarr; Time of Day
-                (e.g., 8:00 AM daily) &rarr; run this shortcut.
-              </span>
-            </li>
-          </ol>
-        </div>
-
-        {/* Test button */}
-        {apiKey && (
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              onClick={testImport}
-              disabled={testStatus === "loading"}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              {testStatus === "loading" ? "Sending..." : "Test Import"}
-            </button>
-            {testStatus === "ok" && (
-              <span className="text-sm text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" />
-                {testMessage}
-              </span>
-            )}
-            {testStatus === "error" && (
-              <span className="text-sm text-red-600">{testMessage}</span>
-            )}
           </div>
         )}
       </section>
@@ -394,7 +322,9 @@ export default function SettingsPage() {
             disabled={syncStatus === "loading"}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${syncStatus === "loading" ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${syncStatus === "loading" ? "animate-spin" : ""}`}
+            />
             {syncStatus === "loading" ? "Syncing..." : "Sync Now"}
           </button>
           {syncStatus === "ok" && (

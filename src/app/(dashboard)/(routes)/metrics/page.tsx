@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Scale } from "lucide-react";
+import { Battery, BrainCircuit, ChevronLeft, ChevronRight, Footprints, Moon, Scale } from "lucide-react";
 import WeightTrendChart from "@/components/charts/WeightTrendChart";
 import { SkeletonChart, SkeletonStatCard } from "@/components/ui/LoadingSkeleton";
 import {
@@ -315,6 +315,113 @@ export default function MetricsPage() {
           </div>
         )}
       </div>
+
+      {/* Garmin metrics */}
+      {(() => {
+        const todayEntry = metrics.find(
+          (m) => String(m.date).slice(0, 10) === selectedDate
+        );
+        const hasGarminData =
+          todayEntry &&
+          (todayEntry.bodyBattery != null ||
+            todayEntry.stressAvg != null ||
+            todayEntry.steps != null ||
+            todayEntry.sleepScore != null);
+
+        if (!hasGarminData) return null;
+
+        const stressColor =
+          (todayEntry!.stressAvg ?? 0) < 40
+            ? "text-green-600"
+            : (todayEntry!.stressAvg ?? 0) < 60
+            ? "text-amber-500"
+            : "text-red-600";
+
+        return (
+          <div className="card p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Battery className="w-5 h-5 text-blue-500" />
+              <h2 className="text-slate-800">Garmin Data</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Body Battery range */}
+              {todayEntry!.bodyBattery != null && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                    Body Battery
+                  </p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-blue-600">
+                      {todayEntry!.bodyBattery}
+                    </span>
+                    {todayEntry!.bodyBatteryLow != null && (
+                      <span className="text-sm text-slate-400">
+                        / {todayEntry!.bodyBatteryLow} low
+                      </span>
+                    )}
+                  </div>
+                  {todayEntry!.bodyBatteryLow != null && (
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{
+                          marginLeft: `${todayEntry!.bodyBatteryLow}%`,
+                          width: `${todayEntry!.bodyBattery! - todayEntry!.bodyBatteryLow!}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Stress */}
+              {todayEntry!.stressAvg != null && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                    <BrainCircuit className="w-3.5 h-3.5" />
+                    Avg Stress
+                  </p>
+                  <p className={`text-2xl font-bold ${stressColor}`}>
+                    {todayEntry!.stressAvg}
+                    <span className="text-sm font-normal text-slate-400 ml-1">
+                      /100
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {/* Steps */}
+              {todayEntry!.steps != null && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                    <Footprints className="w-3.5 h-3.5" />
+                    Steps
+                  </p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {todayEntry!.steps.toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {/* Sleep Score */}
+              {todayEntry!.sleepScore != null && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                    <Moon className="w-3.5 h-3.5" />
+                    Sleep Score
+                  </p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {todayEntry!.sleepScore}
+                    <span className="text-sm font-normal text-slate-400 ml-1">
+                      /100
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 30-day averages */}
       <div>

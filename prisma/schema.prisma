@@ -52,7 +52,6 @@ model User {
   name          String?
   image         String?
   emailVerified DateTime?
-  apiKey        String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -103,17 +102,25 @@ model DietEntry {
 }
 
 model BodyMetric {
-  id           String   @id @default(cuid())
-  userId       String
-  date         DateTime
-  weight       Float?   // kg
-  restingHR    Int?
-  sleepHours   Float?
-  sleepQuality Int?     // 1-10
-  hrv          Int?
-  vo2max       Float?
-  notes        String?
-  createdAt    DateTime @default(now())
+  id                  String   @id @default(cuid())
+  userId              String
+  date                DateTime
+  weight              Float?   // kg
+  restingHR           Int?
+  sleepHours          Float?
+  sleepQuality        Int?     // 1-10
+  hrv                 Int?
+  vo2max              Float?
+  notes               String?
+  bodyBattery         Int?     // Garmin body battery high (0-100)
+  bodyBatteryLow      Int?     // Garmin body battery low (0-100)
+  stressAvg           Int?     // average stress level (0-100)
+  steps               Int?     // daily steps
+  deepSleepMin        Int?     // deep sleep minutes
+  remSleepMin         Int?     // REM sleep minutes
+  sleepScore          Int?     // Garmin sleep score (0-100)
+  trainingReadiness   Int?     // Garmin training readiness (0-100)
+  createdAt           DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

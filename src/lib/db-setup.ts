@@ -13,7 +13,6 @@ export async function setupDatabase(): Promise<void> {
       "name"          TEXT,
       "image"         TEXT,
       "emailVerified" TIMESTAMP(3),
-      "apiKey"        TEXT UNIQUE,
       "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "User_pkey" PRIMARY KEY ("id")
@@ -21,7 +20,6 @@ export async function setupDatabase(): Promise<void> {
     `CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email")`,
     // Add columns if the table already existed without them
     `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "emailVerified" TIMESTAMP(3)`,
-    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "apiKey" TEXT UNIQUE`,
 
     // ── Account (NextAuth OAuth) ─────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS "Account" (
@@ -115,22 +113,39 @@ export async function setupDatabase(): Promise<void> {
 
     // ── BodyMetric ───────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS "BodyMetric" (
-      "id"           TEXT NOT NULL,
-      "userId"       TEXT NOT NULL,
-      "date"         TIMESTAMP(3) NOT NULL,
-      "weight"       DOUBLE PRECISION,
-      "restingHR"    INTEGER,
-      "sleepHours"   DOUBLE PRECISION,
-      "sleepQuality" INTEGER,
-      "hrv"          INTEGER,
-      "vo2max"       DOUBLE PRECISION,
-      "notes"        TEXT,
-      "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "id"                TEXT NOT NULL,
+      "userId"            TEXT NOT NULL,
+      "date"              TIMESTAMP(3) NOT NULL,
+      "weight"            DOUBLE PRECISION,
+      "restingHR"         INTEGER,
+      "sleepHours"        DOUBLE PRECISION,
+      "sleepQuality"      INTEGER,
+      "hrv"               INTEGER,
+      "vo2max"            DOUBLE PRECISION,
+      "notes"             TEXT,
+      "bodyBattery"       INTEGER,
+      "bodyBatteryLow"    INTEGER,
+      "stressAvg"         INTEGER,
+      "steps"             INTEGER,
+      "deepSleepMin"      INTEGER,
+      "remSleepMin"       INTEGER,
+      "sleepScore"        INTEGER,
+      "trainingReadiness" INTEGER,
+      "createdAt"         TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "BodyMetric_pkey" PRIMARY KEY ("id"),
       CONSTRAINT "BodyMetric_userId_date_key" UNIQUE ("userId", "date"),
       CONSTRAINT "BodyMetric_userId_fkey" FOREIGN KEY ("userId")
         REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
     )`,
+    // Add new Garmin columns to existing BodyMetric tables
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "bodyBattery" INTEGER`,
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "bodyBatteryLow" INTEGER`,
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "stressAvg" INTEGER`,
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "steps" INTEGER`,
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "deepSleepMin" INTEGER`,
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "remSleepMin" INTEGER`,
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "sleepScore" INTEGER`,
+    `ALTER TABLE "BodyMetric" ADD COLUMN IF NOT EXISTS "trainingReadiness" INTEGER`,
 
     // ── Goal ─────────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS "Goal" (
