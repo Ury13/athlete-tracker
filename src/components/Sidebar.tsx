@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   Scale,
+  Settings,
   Target,
   Utensils,
   X,
@@ -25,6 +26,7 @@ const navLinks = [
   { href: "/metrics", label: "Metrics", icon: Scale },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {

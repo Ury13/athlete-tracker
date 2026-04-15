@@ -13,13 +13,15 @@ export async function setupDatabase(): Promise<void> {
       "name"          TEXT,
       "image"         TEXT,
       "emailVerified" TIMESTAMP(3),
+      "apiKey"        TEXT UNIQUE,
       "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "User_pkey" PRIMARY KEY ("id")
     )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email")`,
-    // Add emailVerified if the table already existed without it
+    // Add columns if the table already existed without them
     `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "emailVerified" TIMESTAMP(3)`,
+    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "apiKey" TEXT UNIQUE`,
 
     // ── Account (NextAuth OAuth) ─────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS "Account" (
