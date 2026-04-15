@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Dumbbell, Filter } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import TrainingSessionCard from "@/components/TrainingSessionCard";
+import ActivityDetailModal from "@/components/ActivityDetailModal";
 import { SkeletonCard } from "@/components/ui/LoadingSkeleton";
 import type { TrainingSession, TrainingType } from "@/types";
 
@@ -71,7 +72,10 @@ export default function TrainingPage() {
   const [filterTo, setFilterTo] = useState("");
   const [filterType, setFilterType] = useState<TrainingType | "all">("all");
 
-  // Modal
+  // Detail modal
+  const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
+
+  // Log / edit modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SessionForm>(defaultForm());
@@ -285,11 +289,22 @@ export default function TrainingPage() {
             <TrainingSessionCard
               key={session.id}
               session={session}
-              onEdit={openEdit}
+              onEdit={(s) => { openEdit(s); }}
               onDelete={handleDelete}
+              onClick={() => setSelectedSession(session)}
             />
           ))}
         </div>
+      )}
+
+      {/* Activity Detail Modal */}
+      {selectedSession && (
+        <ActivityDetailModal
+          sessionId={selectedSession.id}
+          stravaId={selectedSession.stravaId ?? null}
+          session={selectedSession}
+          onClose={() => setSelectedSession(null)}
+        />
       )}
 
       {/* Log / Edit Modal */}

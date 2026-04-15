@@ -19,6 +19,8 @@ export type TrainingType =
 export interface TrainingSession {
   id: string;
   userId: string;
+  stravaId?: string | null;
+  name?: string | null;
   date: Date;
   type: TrainingType;
   distance: number | null; // km

@@ -64,18 +64,23 @@ interface TrainingSessionCardProps {
   session: TrainingSession;
   onEdit?: (session: TrainingSession) => void;
   onDelete?: (id: string) => void;
+  onClick?: () => void;
 }
 
 export default function TrainingSessionCard({
   session,
   onEdit,
   onDelete,
+  onClick,
 }: TrainingSessionCardProps) {
   const cfg = typeConfig[session.type as TrainingType] ?? typeConfig.other;
   const Icon = cfg.icon;
 
   return (
-    <div className="card p-4 flex flex-col gap-3">
+    <div
+      className={`card p-4 flex flex-col gap-3${onClick ? " cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+      onClick={onClick}
+    >
       {/* Top row */}
       <div className="flex items-start gap-3">
         <div
@@ -103,7 +108,7 @@ export default function TrainingSessionCard({
         <div className="flex items-center gap-1 flex-shrink-0">
           {onEdit && (
             <button
-              onClick={() => onEdit(session)}
+              onClick={(e) => { e.stopPropagation(); onEdit(session); }}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               aria-label="Edit session"
             >
@@ -112,7 +117,7 @@ export default function TrainingSessionCard({
           )}
           {onDelete && (
             <button
-              onClick={() => onDelete(session.id)}
+              onClick={(e) => { e.stopPropagation(); onDelete(session.id); }}
               className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
               aria-label="Delete session"
             >
@@ -195,6 +200,15 @@ export default function TrainingSessionCard({
       {/* Notes */}
       {session.notes && (
         <p className="text-xs text-slate-500 italic truncate">{session.notes}</p>
+      )}
+
+      {/* View details link */}
+      {onClick && (
+        <div className="flex justify-end">
+          <span className="text-xs text-brand-600 font-medium hover:underline">
+            View details →
+          </span>
+        </div>
       )}
     </div>
   );
